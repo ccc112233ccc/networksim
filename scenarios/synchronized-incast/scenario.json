@@ -1,0 +1,40 @@
+{
+  "id": "synchronized-incast",
+  "title": "Synchronized incast and start-time spreading",
+  "topology": "clos512-4x400g",
+  "foreground": {
+    "source_start": 0,
+    "source_count": 64,
+    "destination": 128,
+    "bytes_per_flow": 1048576,
+    "operation": "URMA_WRITE",
+    "priority": 7,
+    "base_start_us": 100
+  },
+  "cases": [
+    {
+      "name": "sync",
+      "description": "All 64 senders start at exactly 100 us.",
+      "default": true,
+      "start_spread_us": 0
+    },
+    {
+      "name": "spread100",
+      "description": "Evenly spread the 64 starts over 100 us.",
+      "default": true,
+      "start_spread_us": 100
+    },
+    {
+      "name": "spread500",
+      "description": "Evenly spread the 64 starts over 500 us.",
+      "default": true,
+      "start_spread_us": 500
+    },
+    {
+      "name": "spread1500",
+      "description": "Admission-style pacing: evenly spread starts over 1.5 ms.",
+      "default": true,
+      "start_spread_us": 1500
+    }
+  ]
+}

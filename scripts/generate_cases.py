@@ -219,6 +219,7 @@ def hardlink_or_copy(source: Path, destination: Path) -> None:
 
 def write_network_attributes(case_dir: Path, inflight_max: int, profile: str, window_trace: bool) -> None:
     diagnostic = profile == "diagnostic"
+    queue_observability = profile in ("queue", "diagnostic")
     attributes = [
         ('default ns3::TpConnectionManager::RemoveUselessTp', 'false'),
         ('default ns3::UbApp::CtpUseUnboundSourceJetty', 'false'),
@@ -240,12 +241,12 @@ def write_network_attributes(case_dir: Path, inflight_max: int, profile: str, wi
         ('default ns3::UbTransportChannel::EnableRetrans', 'false'),
         ('global UB_CC_ENABLED', 'false'),
         ('global UB_CONGESTION_CONTROL_TRACE_ENABLE', 'false'),
-        ('global UB_FLOW_CONTROL_TRACE_ENABLE', str(diagnostic).lower()),
+        ('global UB_FLOW_CONTROL_TRACE_ENABLE', str(queue_observability).lower()),
         ('global UB_PACKET_TRACE_ENABLE', str(diagnostic).lower()),
         ('global UB_PARSE_TRACE_ENABLE', 'true'),
         ('global UB_PORT_TRACE_ENABLE', 'true'),
         ('global UB_PYTHON_SCRIPT_PATH', 'scratch/ns-3-ub-tools/trace_analysis/parse_trace.py'),
-        ('global UB_QUEUE_TRACE_ENABLE', str(diagnostic).lower()),
+        ('global UB_QUEUE_TRACE_ENABLE', str(queue_observability).lower()),
         ('global UB_RECORD_PKT_TRACE', 'false'),
         ('global UB_TASK_TRACE_ENABLE', 'true'),
         ('global UB_TRACE_ENABLE', 'true'),
@@ -340,6 +341,63 @@ def build_same_destination_traffic(scenario: dict, case: dict) -> list[tuple]:
     return rows
 
 
+def build_synchronized_incast_traffic(scenario: dict, case: dict) -> list[tuple]:
+    foreground = scenario["foreground"]
+    count = int(foreground["source_count"])
+    spread_us = float(case["start_spread_us"])
+    rows = []
+    for offset in range(count):
+        fraction = offset / (count - 1) if count > 1 else 0
+        start_us = float(foreground["base_start_us"]) + spread_us * fraction
+        rows.append(
+            traffic_row(
+                offset,
+                foreground["source_start"] + offset,
+                foreground["destination"],
+                foreground["bytes_per_flow"],
+                foreground["operation"],
+                foreground["priority"],
+                f"{start_us:.6f}us",
+            )
+        )
+    return rows
+
+
+def build_mice_elephant_traffic(scenario: dict, case: dict) -> list[tuple]:
+    mice = scenario["mice"]
+    elephants = scenario["elephants"]
+    mice_priority = int(case.get("mice_priority", mice["priority"]))
+    rows = []
+    for offset in range(mice["source_count"]):
+        rows.append(
+            traffic_row(
+                offset,
+                mice["source_start"] + offset,
+                mice["destination"],
+                mice["bytes_per_flow"],
+                mice["operation"],
+                mice_priority,
+                mice["start"],
+            )
+        )
+    destination = case.get("elephant_destination")
+    if destination is None:
+        return rows
+    for offset in range(elephants["source_count"]):
+        rows.append(
+            traffic_row(
+                mice["source_count"] + offset,
+                elephants["source_start"] + offset,
+                destination,
+                elephants["bytes_per_flow"],
+                elephants["operation"],
+                elephants["priority"],
+                elephants["start"],
+            )
+        )
+    return rows
+
+
 def validate_traffic(rows: list[tuple]) -> None:
     task_ids = [int(row[0]) for row in rows]
     if len(task_ids) != len(set(task_ids)):
@@ -368,6 +426,12 @@ def write_case(output_root: Path, suite: str, profile: str, scenario: dict, case
         window_trace = True
     elif suite == "same-destination-background":
         rows = build_same_destination_traffic(scenario, case)
+        window_trace = False
+    elif suite == "synchronized-incast":
+        rows = build_synchronized_incast_traffic(scenario, case)
+        window_trace = False
+    elif suite == "mice-elephant":
+        rows = build_mice_elephant_traffic(scenario, case)
         window_trace = False
     else:
         raise RuntimeError(f"Unsupported suite: {suite}")
@@ -404,10 +468,17 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--suite",
-        choices=("reverse-taack", "same-destination-background"),
+        choices=(
+            "reverse-taack",
+            "same-destination-background",
+            "synchronized-incast",
+            "mice-elephant",
+        ),
         default="reverse-taack",
     )
-    parser.add_argument("--profile", choices=("compact", "diagnostic"), default="compact")
+    parser.add_argument(
+        "--profile", choices=("compact", "queue", "diagnostic"), default="compact"
+    )
     parser.add_argument("--case", help="Generate only one named case")
     parser.add_argument("--output", type=Path, default=ROOT / "work" / "cases")
     parser.add_argument("--list", action="store_true", help="List case names and exit")

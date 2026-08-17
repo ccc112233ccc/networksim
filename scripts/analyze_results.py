@@ -22,7 +22,10 @@ DETAIL_RE = re.compile(
     TIME_PREFIX + r" CTP DETAIL event: (?P<event>\S+).* taSsn: (?P<ta_ssn>\d+)"
 )
 PORT_RX_RE = re.compile(r"^\[(?P<time>[0-9.]+)us\] Port Rx, port ID: 0 PacketSize: 4132$")
-QUEUE_RE = re.compile(r"totalBytes: (?P<bytes>\d+)$")
+QUEUE_EVENT_RE = re.compile(
+    r"^\[(?P<time>[0-9.]+)us\].*totalBytes: (?P<bytes>\d+)$"
+)
+CBFC_CREDIT_RE = re.compile(r"availableCredits: (?P<credits>-?\d+)")
 INFLIGHT_RE = re.compile(r'^default ns3::UbJetty::UbJettyInflightMax "(?P<limit>\d+)"$')
 
 
@@ -50,6 +53,13 @@ def scenario_case_order(suite: str) -> list[str]:
         (ROOT / "scenarios" / suite / "scenario.json").read_text(encoding="utf-8")
     )
     return [case["name"] for case in scenario["cases"]]
+
+
+def scenario_case_map(suite: str) -> dict[str, dict]:
+    scenario = json.loads(
+        (ROOT / "scenarios" / suite / "scenario.json").read_text(encoding="utf-8")
+    )
+    return {case["name"]: case for case in scenario["cases"]}
 
 
 def read_inflight_limit(case: Path) -> int:
@@ -143,16 +153,62 @@ def max_receiver_gap(case: Path) -> float:
 
 
 def max_final_link_queue(case: Path) -> float:
-    path = case / "runlog" / "QueueTrace_node_512_port_0.tr"
+    return max_queue(case, 512, 0)
+
+
+def max_queue(case: Path, node: int, port: int) -> float:
+    return queue_metrics(case, node, port)["max_bytes"]
+
+
+def queue_metrics(case: Path, node: int, port: int) -> dict:
+    path = case / "runlog" / f"QueueTrace_node_{node}_port_{port}.tr"
     if not path.is_file():
-        return float("nan")
+        return {
+            "max_bytes": float("nan"),
+            "time_above_1mib_us": float("nan"),
+            "nonempty_time_us": float("nan"),
+        }
     maximum = 0
+    above_1mib = 0.0
+    nonempty = 0.0
+    previous_time = None
+    previous_bytes = 0
     with path.open(encoding="utf-8") as stream:
         for line in stream:
-            match = QUEUE_RE.search(line)
+            match = QUEUE_EVENT_RE.match(line)
             if match:
-                maximum = max(maximum, int(match.group("bytes")))
-    return float(maximum)
+                current_time = float(match.group("time"))
+                current_bytes = int(match.group("bytes"))
+                if previous_time is not None:
+                    duration = current_time - previous_time
+                    if previous_bytes > 0:
+                        nonempty += duration
+                    if previous_bytes >= 1024 * 1024:
+                        above_1mib += duration
+                maximum = max(maximum, current_bytes)
+                previous_time = current_time
+                previous_bytes = current_bytes
+    return {
+        "max_bytes": float(maximum),
+        "time_above_1mib_us": above_1mib,
+        "nonempty_time_us": nonempty,
+    }
+
+
+def cbfc_credit_metrics(case: Path, node: int, port: int) -> dict:
+    path = case / "runlog" / f"CbfcTrace_node_{node}_port_{port}.tr"
+    if not path.is_file():
+        return {"min_credits": float("nan"), "events": 0}
+    values = []
+    with path.open(encoding="utf-8") as stream:
+        for line in stream:
+            match = CBFC_CREDIT_RE.search(line)
+            if match:
+                values.append(int(match.group("credits")))
+    return {
+        "min_credits": min(values) if values else float("nan"),
+        "events": len(values),
+    }
 
 
 def receiver_rate(case: Path) -> float:
@@ -299,14 +355,164 @@ def analyze_background(cases_root: Path, output: Path) -> None:
     (output / "analysis.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def task_fcts_us(rows: list[dict]) -> list[float]:
+    return [
+        float(row["taskCompletesTime(us)"]) - float(row["taskStartTime(us)"])
+        for row in rows
+    ]
+
+
+def summarize_incast(case: Path, definition: dict) -> dict:
+    with (case / "output" / "task_statistics.csv").open(newline="", encoding="utf-8") as stream:
+        rows = list(csv.DictReader(stream))
+    if len(rows) != 64:
+        raise RuntimeError(f"{case.name}: expected 64 incast tasks, found {len(rows)}")
+    fcts = task_fcts_us(rows)
+    first_start = min(float(row["taskStartTime(us)"]) for row in rows)
+    last_complete = max(float(row["taskCompletesTime(us)"]) for row in rows)
+    total_bytes = sum(int(row["dataSize(Byte)"]) for row in rows)
+    queue = queue_metrics(case, 520, 0)
+    credits = cbfc_credit_metrics(case, 520, 0)
+    return {
+        "case": case.name,
+        "start_spread_us": float(definition["start_spread_us"]),
+        "completed": len(rows),
+        "fct_median_us": statistics.median(fcts),
+        "fct_p95_us": percentile(fcts, 0.95),
+        "fct_p99_us": percentile(fcts, 0.99),
+        "fct_max_us": max(fcts),
+        "fct_cv": statistics.pstdev(fcts) / statistics.mean(fcts),
+        "job_makespan_us": last_complete - first_start,
+        "aggregate_payload_gbps": total_bytes * 8 / ((last_complete - first_start) * 1e3),
+        "receiver_128_port0_rx_gbps": receiver_rate(case),
+        "receiver_max_data_gap_us": max_receiver_gap(case),
+        "node520_port0_max_queue_bytes": queue["max_bytes"],
+        "node520_port0_queue_above_1mib_us": queue["time_above_1mib_us"],
+        "node520_port0_queue_nonempty_us": queue["nonempty_time_us"],
+        "node520_port0_min_cbfc_credits": credits["min_credits"],
+        "node520_port0_cbfc_events": credits["events"],
+    }
+
+
+def analyze_incast(cases_root: Path, output: Path) -> None:
+    definitions = scenario_case_map("synchronized-incast")
+    records = []
+    for name in scenario_case_order("synchronized-incast"):
+        stats = cases_root / name / "output" / "task_statistics.csv"
+        if stats.is_file():
+            records.append(summarize_incast(cases_root / name, definitions[name]))
+    if not records:
+        raise RuntimeError(f"No completed synchronized-incast cases under {cases_root}")
+    baseline = records[0]["fct_p99_us"]
+    for row in records:
+        row["p99_vs_sync"] = row["fct_p99_us"] / baseline
+    output.mkdir(parents=True, exist_ok=True)
+    with (output / "results-summary.csv").open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.DictWriter(stream, fieldnames=list(records[0]))
+        writer.writeheader()
+        writer.writerows(records)
+    lines = [
+        "# Synchronized incast and start-time spreading",
+        "",
+        "| Case | Spread us | FCT median us | FCT P99 us | P99/sync | Job makespan us | Payload Gbps | Receiver Gbps | Max gap us | Final queue bytes |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for row in records:
+        lines.append(
+            f'| {row["case"]} | {fmt(row["start_spread_us"], 0)} | '
+            f'{fmt(row["fct_median_us"], 3)} | {fmt(row["fct_p99_us"], 3)} | '
+            f'{fmt(row["p99_vs_sync"], 3)} | {fmt(row["job_makespan_us"], 3)} | '
+            f'{fmt(row["aggregate_payload_gbps"], 3)} | '
+            f'{fmt(row["receiver_128_port0_rx_gbps"], 3)} | '
+            f'{fmt(row["receiver_max_data_gap_us"], 6)} | '
+            f'{fmt(row["node520_port0_max_queue_bytes"], 0)} |'
+        )
+    (output / "analysis.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def summarize_mice_elephant(case: Path) -> dict:
+    with (case / "output" / "task_statistics.csv").open(newline="", encoding="utf-8") as stream:
+        rows = list(csv.DictReader(stream))
+    mice = [row for row in rows if int(row["taskId"]) < 32]
+    elephants = [row for row in rows if int(row["taskId"]) >= 32]
+    if len(mice) != 32:
+        raise RuntimeError(f"{case.name}: expected 32 mice tasks, found {len(mice)}")
+    fcts = task_fcts_us(mice)
+    first_start = min(float(row["taskStartTime(us)"]) for row in mice)
+    last_complete = max(float(row["taskCompletesTime(us)"]) for row in mice)
+    mice_bytes = sum(int(row["dataSize(Byte)"]) for row in mice)
+    queue = queue_metrics(case, 520, 0)
+    credits = cbfc_credit_metrics(case, 520, 0)
+    return {
+        "case": case.name,
+        "mice_completed": len(mice),
+        "elephants_completed": len(elephants),
+        "mice_fct_median_us": statistics.median(fcts),
+        "mice_fct_p95_us": percentile(fcts, 0.95),
+        "mice_fct_p99_us": percentile(fcts, 0.99),
+        "mice_fct_max_us": max(fcts),
+        "mice_fct_cv": statistics.pstdev(fcts) / statistics.mean(fcts),
+        "mice_completion_spread_us": max(fcts) - min(fcts),
+        "mice_payload_gbps": mice_bytes * 8 / ((last_complete - first_start) * 1e3),
+        "receiver_128_port0_rx_gbps": receiver_rate(case),
+        "receiver_max_data_gap_us": max_receiver_gap(case),
+        "node520_port0_max_queue_bytes": queue["max_bytes"],
+        "node520_port0_queue_above_1mib_us": queue["time_above_1mib_us"],
+        "node520_port0_queue_nonempty_us": queue["nonempty_time_us"],
+        "node520_port0_min_cbfc_credits": credits["min_credits"],
+        "node520_port0_cbfc_events": credits["events"],
+    }
+
+
+def analyze_mice_elephant(cases_root: Path, output: Path) -> None:
+    records = []
+    for name in scenario_case_order("mice-elephant"):
+        stats = cases_root / name / "output" / "task_statistics.csv"
+        if stats.is_file():
+            records.append(summarize_mice_elephant(cases_root / name))
+    if not records:
+        raise RuntimeError(f"No completed mice-elephant cases under {cases_root}")
+    baseline_p99 = records[0]["mice_fct_p99_us"]
+    for row in records:
+        row["mice_p99_slowdown"] = row["mice_fct_p99_us"] / baseline_p99
+    output.mkdir(parents=True, exist_ok=True)
+    with (output / "results-summary.csv").open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.DictWriter(stream, fieldnames=list(records[0]))
+        writer.writeheader()
+        writer.writerows(records)
+    lines = [
+        "# Mice-elephant interference",
+        "",
+        "| Case | Elephants | Mice median us | Mice P99 us | P99 slowdown | Mice Gbps | Receiver Gbps | Max gap us | Final queue bytes |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for row in records:
+        lines.append(
+            f'| {row["case"]} | {row["elephants_completed"]} | '
+            f'{fmt(row["mice_fct_median_us"], 3)} | {fmt(row["mice_fct_p99_us"], 3)} | '
+            f'{fmt(row["mice_p99_slowdown"], 3)} | {fmt(row["mice_payload_gbps"], 3)} | '
+            f'{fmt(row["receiver_128_port0_rx_gbps"], 3)} | '
+            f'{fmt(row["receiver_max_data_gap_us"], 6)} | '
+            f'{fmt(row["node520_port0_max_queue_bytes"], 0)} |'
+        )
+    (output / "analysis.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--suite",
-        choices=("reverse-taack", "same-destination-background"),
+        choices=(
+            "reverse-taack",
+            "same-destination-background",
+            "synchronized-incast",
+            "mice-elephant",
+        ),
         default="reverse-taack",
     )
-    parser.add_argument("--profile", choices=("compact", "diagnostic"), default="compact")
+    parser.add_argument(
+        "--profile", choices=("compact", "queue", "diagnostic"), default="compact"
+    )
     parser.add_argument("--cases-root", type=Path)
     parser.add_argument("--output", type=Path)
     return parser.parse_args()
@@ -318,8 +524,12 @@ def main() -> None:
     output = args.output or ROOT / "results" / "current" / args.suite / args.profile
     if args.suite == "reverse-taack":
         analyze_reverse(cases_root, output)
-    else:
+    elif args.suite == "same-destination-background":
         analyze_background(cases_root, output)
+    elif args.suite == "synchronized-incast":
+        analyze_incast(cases_root, output)
+    else:
+        analyze_mice_elephant(cases_root, output)
     print(f"wrote {output / 'results-summary.csv'}")
     print(f"wrote {output / 'analysis.md'}")
 

@@ -1,0 +1,49 @@
+{
+  "id": "mice-elephant",
+  "title": "Latency-sensitive mice under elephant interference",
+  "topology": "clos512-4x400g",
+  "mice": {
+    "source_start": 0,
+    "source_count": 32,
+    "destination": 128,
+    "bytes_per_flow": 262144,
+    "operation": "URMA_WRITE",
+    "priority": 7,
+    "start": "100us"
+  },
+  "elephants": {
+    "source_start": 256,
+    "source_count": 8,
+    "bytes_per_flow": 16777216,
+    "operation": "URMA_WRITE",
+    "priority": 7,
+    "start": "0ns"
+  },
+  "cases": [
+    {
+      "name": "mice-only",
+      "description": "No elephant background traffic.",
+      "default": true,
+      "elephant_destination": null
+    },
+    {
+      "name": "elephant-disjoint",
+      "description": "Eight elephants use a different destination final link (node 192).",
+      "default": true,
+      "elephant_destination": 192
+    },
+    {
+      "name": "elephant-shared",
+      "description": "Eight elephants and the mice share node 128 port 0 and VL7.",
+      "default": true,
+      "elephant_destination": 128
+    },
+    {
+      "name": "elephant-shared-mice-vl1",
+      "description": "Shared final link, but mice use high-priority VL1 and elephants remain on VL7.",
+      "default": true,
+      "elephant_destination": 128,
+      "mice_priority": 1
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "date": "2026-08-17",
+  "simulator_commit": "9e6368faaadfeb09d42b474097440020e29ce29c",
+  "networksim_observability_patch": "patches/0001-networksim-observability.patch",
+  "rng_run": 1,
+  "profile": "queue",
+  "host_os": "macOS",
+  "topology": "clos512-4x400g",
+  "flow_control": "CBFC",
+  "vl_scheduler": "SP",
+  "packet_spray": true,
+  "retransmission": false,
+  "congestion_control": false,
+  "notes": "All 8 new cases completed every scheduled task. Queue and CBFC traces were enabled; packet trace was disabled."
+}

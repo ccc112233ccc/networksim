@@ -3,7 +3,7 @@ SUITE ?= reverse-taack
 PROFILE ?= compact
 CASE ?= reverse-shared-fanin08
 
-.PHONY: setup generate run suite analyze verify
+.PHONY: setup generate run suite analyze plot verify
 
 setup:
 	./scripts/setup.sh
@@ -19,6 +19,9 @@ suite:
 
 analyze:
 	$(PYTHON) ./scripts/analyze_results.py --suite $(SUITE) --profile $(PROFILE)
+
+plot:
+	$(PYTHON) ./scripts/plot_results.py
 
 verify:
 	$(PYTHON) ./scripts/verify_repository.py

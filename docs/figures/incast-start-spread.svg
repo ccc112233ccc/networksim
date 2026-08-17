@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 670" role="img">
+<title>Synchronized incast: start spreading trades throughput for tail latency</title>
+<desc>Median and P99 flow completion, job makespan, final-link peak queue, and aggregate payload rate for four start spreads.</desc>
+<rect width="1000" height="670" fill="#f8fafc"/>
+<text x="40.0" y="40.0" font-family="system-ui,sans-serif" font-size="24" font-weight="700" text-anchor="start" fill="#172033">Synchronized incast: start spreading trades throughput for tail latency</text>
+<rect x="40" y="65" width="920" height="300" fill="#ffffff" stroke="#cbd5e1"/>
+<text x="52.0" y="88.0" font-family="system-ui,sans-serif" font-size="15" font-weight="600" text-anchor="start" fill="#172033">Latency / makespan (us)</text>
+<line x1="102" y1="313.0" x2="942" y2="313.0" stroke="#e2e8f0"/>
+<text x="94.0" y="317.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="end" fill="#172033">0</text>
+<line x1="102" y1="268.5" x2="942" y2="268.5" stroke="#e2e8f0"/>
+<text x="94.0" y="272.5" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="end" fill="#172033">400</text>
+<line x1="102" y1="224.0" x2="942" y2="224.0" stroke="#e2e8f0"/>
+<text x="94.0" y="228.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="end" fill="#172033">800</text>
+<line x1="102" y1="179.5" x2="942" y2="179.5" stroke="#e2e8f0"/>
+<text x="94.0" y="183.5" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="end" fill="#172033">1200</text>
+<line x1="102" y1="135.0" x2="942" y2="135.0" stroke="#e2e8f0"/>
+<text x="94.0" y="139.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="end" fill="#172033">1600</text>
+<rect x="156.0" y="162.8" width="32.0" height="150.2" fill="#2563eb"/>
+<rect x="190.0" y="162.2" width="32.0" height="150.8" fill="#f97316"/>
+<rect x="224.0" y="162.2" width="32.0" height="150.8" fill="#16a34a"/>
+<text x="207.0" y="331.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#172033">sync</text>
+<rect x="366.0" y="223.2" width="32.0" height="89.8" fill="#2563eb"/>
+<rect x="400.0" y="172.5" width="32.0" height="140.5" fill="#f97316"/>
+<rect x="434.0" y="162.2" width="32.0" height="150.8" fill="#16a34a"/>
+<text x="417.0" y="331.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#172033">100 us</text>
+<rect x="576.0" y="247.9" width="32.0" height="65.1" fill="#2563eb"/>
+<rect x="610.0" y="210.4" width="32.0" height="102.6" fill="#f97316"/>
+<rect x="644.0" y="162.2" width="32.0" height="150.8" fill="#16a34a"/>
+<text x="627.0" y="331.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#172033">500 us</text>
+<rect x="786.0" y="310.5" width="32.0" height="2.5" fill="#2563eb"/>
+<rect x="820.0" y="310.5" width="32.0" height="2.5" fill="#f97316"/>
+<rect x="854.0" y="143.6" width="32.0" height="169.4" fill="#16a34a"/>
+<text x="837.0" y="331.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#172033">1500 us</text>
+<rect x="102" y="102" width="11" height="11" fill="#2563eb"/>
+<text x="118.0" y="112.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#172033">median FCT</text>
+<rect x="252" y="102" width="11" height="11" fill="#f97316"/>
+<text x="268.0" y="112.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#172033">P99 FCT</text>
+<rect x="402" y="102" width="11" height="11" fill="#16a34a"/>
+<text x="418.0" y="112.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#172033">job makespan</text>
+<rect x="40" y="385" width="445" height="245" fill="#ffffff" stroke="#cbd5e1"/>
+<text x="52.0" y="408.0" font-family="system-ui,sans-serif" font-size="15" font-weight="600" text-anchor="start" fill="#172033">Final-link peak queue (MiB)</text>
+<line x1="102" y1="578.0" x2="467" y2="578.0" stroke="#e2e8f0"/>
+<text x="94.0" y="582.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="end" fill="#172033">0</text>
+<line x1="102" y1="544.2" x2="467" y2="544.2" stroke="#e2e8f0"/>
+<text x="94.0" y="548.2" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="end" fill="#172033">4</text>
+<line x1="102" y1="510.5" x2="467" y2="510.5" stroke="#e2e8f0"/>
+<text x="94.0" y="514.5" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="end" fill="#172033">9</text>
+<line x1="102" y1="476.8" x2="467" y2="476.8" stroke="#e2e8f0"/>
+<text x="94.0" y="480.8" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="end" fill="#172033">14</text>
+<line x1="102" y1="443.0" x2="467" y2="443.0" stroke="#e2e8f0"/>
+<text x="94.0" y="447.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="end" fill="#172033">18</text>
+<rect x="130.6" y="460.8" width="32.0" height="117.2" fill="#2563eb"/>
+<text x="146.6" y="455.8" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#172033">15.62</text>
+<text x="147.6" y="596.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#172033">sync</text>
+<rect x="221.9" y="460.9" width="32.0" height="117.1" fill="#2563eb"/>
+<text x="237.9" y="455.9" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#172033">15.62</text>
+<text x="238.9" y="596.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#172033">100 us</text>
+<rect x="313.1" y="461.1" width="32.0" height="116.9" fill="#2563eb"/>
+<text x="329.1" y="456.1" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#172033">15.59</text>
+<text x="330.1" y="596.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#172033">500 us</text>
+<rect x="404.4" y="572.4" width="32.0" height="5.6" fill="#2563eb"/>
+<text x="420.4" y="567.4" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#172033">0.75</text>
+<text x="421.4" y="596.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#172033">1500 us</text>
+<rect x="515" y="385" width="445" height="245" fill="#ffffff" stroke="#cbd5e1"/>
+<text x="527.0" y="408.0" font-family="system-ui,sans-serif" font-size="15" font-weight="600" text-anchor="start" fill="#172033">Aggregate payload rate (Gbps)</text>
+<line x1="577" y1="578.0" x2="942" y2="578.0" stroke="#e2e8f0"/>
+<text x="569.0" y="582.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="end" fill="#172033">0</text>
+<line x1="577" y1="544.2" x2="942" y2="544.2" stroke="#e2e8f0"/>
+<text x="569.0" y="548.2" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="end" fill="#172033">105</text>
+<line x1="577" y1="510.5" x2="942" y2="510.5" stroke="#e2e8f0"/>
+<text x="569.0" y="514.5" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="end" fill="#172033">210</text>
+<line x1="577" y1="476.8" x2="942" y2="476.8" stroke="#e2e8f0"/>
+<text x="569.0" y="480.8" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="end" fill="#172033">315</text>
+<line x1="577" y1="443.0" x2="942" y2="443.0" stroke="#e2e8f0"/>
+<text x="569.0" y="447.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="end" fill="#172033">420</text>
+<rect x="605.6" y="450.7" width="32.0" height="127.3" fill="#2563eb"/>
+<text x="621.6" y="445.7" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#172033">396.03</text>
+<text x="622.6" y="596.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#172033">sync</text>
+<rect x="696.9" y="450.7" width="32.0" height="127.3" fill="#2563eb"/>
+<text x="712.9" y="445.7" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#172033">396.03</text>
+<text x="713.9" y="596.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#172033">100 us</text>
+<rect x="788.1" y="450.7" width="32.0" height="127.3" fill="#2563eb"/>
+<text x="804.1" y="445.7" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#172033">396.03</text>
+<text x="805.1" y="596.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#172033">500 us</text>
+<rect x="879.4" y="464.7" width="32.0" height="113.3" fill="#2563eb"/>
+<text x="895.4" y="459.7" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#172033">352.55</text>
+<text x="896.4" y="596.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="middle" fill="#172033">1500 us</text>
+<text x="40.0" y="652.0" font-family="system-ui,sans-serif" font-size="11" font-weight="400" text-anchor="start" fill="#172033">ns-3-UB 9e6368f · RNG run 1 · 400 Gbps · queue profile</text>
+</svg>

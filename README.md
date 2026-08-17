@@ -7,6 +7,7 @@
 - 自动应用一个不改变协议行为的可观测性补丁，关闭无效逐包告警并记录 TA unit/TAACK 时间点；
 - 生成 512 主机、32 台 L1、16 台 L2 的四端口 Clos 拓扑及完整路由表；
 - 运行 128→1 背景干扰和反向 TAACK 干扰测试；
+- 运行同步 incast/pacing 以及 mice–elephant/服务类隔离测试；
 - 汇总任务完成时间、接收带宽、正向空洞、TAACK 延迟和队列占用；
 - 保存已经得到的参考数据、结论和复现边界。
 
@@ -53,6 +54,11 @@ make run SUITE=reverse-taack PROFILE=compact CASE=no-bg
 make suite SUITE=same-destination-background PROFILE=compact
 make analyze SUITE=same-destination-background PROFILE=compact
 
+# 运行新增的队列级实验并重绘报告图表
+make suite SUITE=synchronized-incast PROFILE=queue
+make suite SUITE=mice-elephant PROFILE=queue
+make plot
+
 # 开启交换机队列和 CBFC 详细 trace；磁盘占用会显著增加
 make run SUITE=reverse-taack PROFILE=diagnostic CASE=reverse-shared-fanin08
 
@@ -74,7 +80,8 @@ python3 scripts/analyze_results.py --suite reverse-taack --profile compact
 | Profile | 默认用途 | 主要输出 | 典型磁盘开销 |
 |---|---|---|---:|
 | `compact` | 日常回归 | Task、Port、过滤后的 CTP window trace | 每个大流用例约数百 MB |
-| `diagnostic` | 根因定位 | compact + Queue、IngressQueue、CBFC | 每个大流用例约 2–3 GB |
+| `queue` | 队列/流控分析 | compact + Queue、CBFC，Packet trace 关闭 | 每个用例约数十至数百 MB |
+| `diagnostic` | 根因定位 | queue + Packet、IngressQueue | 每个大流用例约 2–3 GB |
 
 历史队列参考数据使用 `diagnostic` 等价配置获得；公开上游 smoke 数据使用 `compact`。完整默认 suite 包含多个用例，建议至少预留 20 GB。
 
@@ -97,7 +104,8 @@ networksim/
 ├── docs/
 │   ├── TOPOLOGY.md
 │   ├── TEST_PLAN.md
-│   └── RESULTS.md
+│   ├── RESULTS.md
+│   └── EXPERIMENT_REPORT.md             # 新增两类流量的图表化结果报告
 └── results/reference/                   # 已有参考 CSV
 ```
 
@@ -108,8 +116,11 @@ networksim/
 3. sender inflight 从 512 提至 1024 后，前景带宽恢复到 `332.89 Gbps`，说明有限窗口是传导环节；但仍未完全恢复，说明扩大窗口只是缓解而非消除反馈排队。
 4. 将前景及其 TAACK 放在高优先级 VL1、背景保留 VL7，可把 TAACK P99 降至 `1.068 us`，前景带宽恢复到 `396.24 Gbps`、接收口恢复 `400 Gbps`。
 5. 所有上述任务均完成且重传关闭。这里复现的是 lossless feedback-path queueing/HoL 和窗口饥饿，不是丢包或 OOO bitmap 溢出。
+6. 64→1 同步 incast 的峰值最终出口队列达到 `15.62 MiB`；将启动摊到 1.5 ms 后，P99 FCT 和峰值队列分别降低 `98.32%` 和 `95.18%`，但 job makespan 增加 `12.33%`。
+7. 共享最终口/VL 的长流使 mice P99 增至 `4.528×`；VL1 隔离可把 P99 恢复至 `1.001×`，但峰值队列增至 `20.96 MiB`，说明 QoS 保护尾延迟但不消除拥塞。
 
 详细表格和解释见 [docs/RESULTS.md](docs/RESULTS.md)。
+同步 incast 和 mice–elephant 的完整报告见 [docs/EXPERIMENT_REPORT.md](docs/EXPERIMENT_REPORT.md)。
 
 ## 解释边界
 

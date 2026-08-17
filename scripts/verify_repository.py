@@ -9,6 +9,7 @@ import py_compile
 import subprocess
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
@@ -19,13 +20,28 @@ REQUIRED = (
     "docs/TOPOLOGY.md",
     "docs/TEST_PLAN.md",
     "docs/RESULTS.md",
+    "docs/EXPERIMENT_REPORT.md",
+    "docs/figures/incast-start-spread.svg",
+    "docs/figures/mice-elephant-interference.svg",
     "patches/0001-networksim-observability.patch",
     "scenarios/reverse-taack/scenario.json",
     "scenarios/same-destination-background/scenario.json",
+    "scenarios/synchronized-incast/scenario.json",
+    "scenarios/mice-elephant/scenario.json",
     "results/reference/reverse-taack.csv",
     "results/reference/same-destination-background.csv",
     "results/reference/public-upstream-smoke.csv",
+    "results/reference/synchronized-incast.csv",
+    "results/reference/mice-elephant.csv",
+    "results/reference/new-traffic-manifest.json",
 )
+
+SCENARIO_REFERENCES = {
+    "reverse-taack": "reverse-taack.csv",
+    "same-destination-background": "same-destination-background.csv",
+    "synchronized-incast": "synchronized-incast.csv",
+    "mice-elephant": "mice-elephant.csv",
+}
 
 
 def fail(message: str) -> None:
@@ -41,20 +57,15 @@ def main() -> None:
     if len(lock["commit"]) != 40:
         fail("simulator.lock.json must pin a full 40-character commit")
 
-    reverse = json.loads(
-        (ROOT / "scenarios" / "reverse-taack" / "scenario.json").read_text(encoding="utf-8")
-    )
-    background = json.loads(
-        (ROOT / "scenarios" / "same-destination-background" / "scenario.json").read_text(
-            encoding="utf-8"
+    scenario_names = {}
+    for suite in SCENARIO_REFERENCES:
+        scenario = json.loads(
+            (ROOT / "scenarios" / suite / "scenario.json").read_text(encoding="utf-8")
         )
-    )
-    reverse_names = [case["name"] for case in reverse["cases"]]
-    background_names = [case["name"] for case in background["cases"]]
-    if len(reverse_names) != len(set(reverse_names)):
-        fail("Duplicate reverse-taack case names")
-    if len(background_names) != len(set(background_names)):
-        fail("Duplicate same-destination-background case names")
+        names = [case["name"] for case in scenario["cases"]]
+        if len(names) != len(set(names)):
+            fail(f"Duplicate case names in {suite}")
+        scenario_names[suite] = names
 
     for script in sorted((ROOT / "scripts").glob("*.py")):
         py_compile.compile(str(script), doraise=True)
@@ -86,19 +97,43 @@ def main() -> None:
         if len(rows) != 4:
             fail(f"no-bg should contain four foreground tasks, got {len(rows)}")
 
-    with (ROOT / "results" / "reference" / "reverse-taack.csv").open(
-        newline="", encoding="utf-8"
-    ) as stream:
-        reference_reverse = {row["case"] for row in csv.DictReader(stream)}
-    if not set(reverse_names).issubset(reference_reverse):
-        fail("Reverse reference CSV does not cover every scenario case")
+        generated_expectations = (
+            ("synchronized-incast", "queue", "sync", 64),
+            ("mice-elephant", "queue", "elephant-shared", 40),
+        )
+        for suite, profile, case_name, expected_tasks in generated_expectations:
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "generate_cases.py"),
+                    "--suite",
+                    suite,
+                    "--profile",
+                    profile,
+                    "--case",
+                    case_name,
+                    "--output",
+                    str(output),
+                ],
+                check=True,
+            )
+            with (output / suite / profile / case_name / "traffic.csv").open(
+                newline="", encoding="utf-8"
+            ) as stream:
+                generated_rows = list(csv.DictReader(stream))
+            if len(generated_rows) != expected_tasks:
+                fail(f"{suite}/{case_name}: expected {expected_tasks} tasks")
 
-    with (ROOT / "results" / "reference" / "same-destination-background.csv").open(
-        newline="", encoding="utf-8"
-    ) as stream:
-        reference_background = {row["case"] for row in csv.DictReader(stream)}
-    if not set(background_names).issubset(reference_background):
-        fail("Background reference CSV does not cover every scenario case")
+    for suite, reference_name in SCENARIO_REFERENCES.items():
+        with (ROOT / "results" / "reference" / reference_name).open(
+            newline="", encoding="utf-8"
+        ) as stream:
+            reference_names = {row["case"] for row in csv.DictReader(stream)}
+        if not set(scenario_names[suite]).issubset(reference_names):
+            fail(f"{reference_name} does not cover every {suite} case")
+
+    for figure in ("incast-start-spread.svg", "mice-elephant-interference.svg"):
+        ET.parse(ROOT / "docs" / "figures" / figure)
 
     print("repository verification passed")
 
