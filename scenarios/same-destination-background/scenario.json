@@ -1,0 +1,28 @@
+{
+  "id": "same-destination-background",
+  "title": "128-to-1 same-destination background interference",
+  "topology": "clos512-4x400g",
+  "foreground": {
+    "source_start": 0,
+    "source_count": 128,
+    "destination": 128,
+    "bytes_per_flow": 33554432,
+    "operation": "URMA_WRITE",
+    "priority": 7,
+    "start": "100us"
+  },
+  "cases": [
+    {"name": "bg000", "description": "No background traffic.", "default": true, "background_count": 0},
+    {"name": "bg043", "description": "43 background flows start 100 us before foreground.", "default": true, "background_count": 43},
+    {"name": "bg128", "description": "128 background flows start 100 us before foreground.", "default": true, "background_count": 128},
+    {"name": "bg383", "description": "All remaining 383 hosts send background traffic.", "default": true, "background_count": 383}
+  ],
+  "background": {
+    "source_start": 129,
+    "destination": 128,
+    "bytes_per_flow": 33554432,
+    "operation": "URMA_WRITE",
+    "priority": 7,
+    "start": "0ns"
+  }
+}

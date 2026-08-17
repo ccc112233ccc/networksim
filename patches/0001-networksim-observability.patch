@@ -1,0 +1,44 @@
+diff --git a/src/unified-bus/examples/ub-case-runner.cc b/src/unified-bus/examples/ub-case-runner.cc
+index 3669f5a..624485f 100644
+--- a/src/unified-bus/examples/ub-case-runner.cc
++++ b/src/unified-bus/examples/ub-case-runner.cc
+@@ -752,7 +752,8 @@ void EnableExampleLogging()
+     LogComponentEnable("UbController", LOG_LEVEL_WARN);
+     LogComponentEnable("UbDataLink", LOG_LEVEL_WARN);
+     LogComponentEnable("UbFlowControl", LOG_LEVEL_WARN);
+-    LogComponentEnable("UbHeader", LOG_LEVEL_WARN);
++    // UbHeader currently emits a warning for every valid compact data packet.
++    // Keep it disabled so protocol-level CTP traces remain usable.
+     LogComponentEnable("UbLink", LOG_LEVEL_WARN);
+     LogComponentEnable("UbLdstInstance", LOG_LEVEL_WARN);
+     LogComponentEnable("UbLdstThread", LOG_LEVEL_WARN);
+diff --git a/src/unified-bus/model/protocol/ub-ctp.cc b/src/unified-bus/model/protocol/ub-ctp.cc
+index 44da2ea..521c439 100644
+--- a/src/unified-bus/model/protocol/ub-ctp.cc
++++ b/src/unified-bus/model/protocol/ub-ctp.cc
+@@ -1248,6 +1248,13 @@ UbCtpTransportService::HandleReceivedPacket(Ptr<Packet> packet, uint32_t receive
+                                               static_cast<uint8_t>(TaOpcode::TA_OPCODE_TRANSACTION_ACK)
+                                           ? 1
+                                           : copy->GetSize());
++            TraceDetailEvent(reverseKey,
++                             "taack-received",
++                             ackHeader.GetIniTaSsn(),
++                             copy->GetSize(),
++                             0,
++                             0,
++                             0);
+             CompleteFromTaAck(reverseKey, ackHeader.GetIniTaSsn(), response);
+             return true;
+         }
+@@ -1396,4 +1403,11 @@ UbCtpTransportService::TrackInboundTaPacket(UbCtpEntityState& state,
+     Ptr<UbWqeSegment> completed = unit.segment;
++    TraceDetailEvent(state.GetKey(),
++                     "ta-unit-complete",
++                     taHeader.GetIniTaSsn(),
++                     payloadBytes,
++                     unit.bytesReceived,
++                     unit.expectedPayloadBytes,
++                     0);
+     state.Rx().inboundTaUnits.erase(taHeader.GetIniTaSsn());
+     return completed;
+ }

@@ -1,0 +1,15 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.venv/
+
+# The upstream simulator is fetched on demand and is not vendored.
+external/
+
+# Generated topology, 1.1M-row routing table, cases, traces, and parsed outputs.
+work/
+results/current/
+
+# Common ns-3 output directories if a case is run elsewhere.
+**/runlog/
+**/output/

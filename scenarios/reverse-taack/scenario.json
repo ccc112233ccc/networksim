@@ -1,0 +1,127 @@
+{
+  "id": "reverse-taack",
+  "title": "Reverse-path TAACK interference",
+  "topology": "clos512-4x400g",
+  "foreground": {
+    "sources": [0, 1, 2, 3],
+    "destination": 128,
+    "bytes_per_flow": 33554432,
+    "operation": "URMA_WRITE",
+    "priority": 7,
+    "start": "100us"
+  },
+  "cases": [
+    {
+      "name": "no-bg",
+      "description": "No reverse background traffic.",
+      "default": true,
+      "background": null
+    },
+    {
+      "name": "reverse-disjoint",
+      "description": "64 reverse flows target nodes 4-7, sharing fabric direction but not the foreground sources' final links.",
+      "default": true,
+      "background": {
+        "source_start": 256,
+        "source_count": 64,
+        "targets": [4, 5, 6, 7],
+        "bytes_per_flow": 16777216,
+        "priority": 7,
+        "start": "0ns"
+      }
+    },
+    {
+      "name": "reverse-shared-fanin01",
+      "description": "One reverse background flow per foreground source; 256 MiB per target.",
+      "default": true,
+      "background": {
+        "source_start": 256,
+        "source_count": 4,
+        "targets": [0, 1, 2, 3],
+        "bytes_per_flow": 268435456,
+        "priority": 7,
+        "start": "0ns"
+      }
+    },
+    {
+      "name": "reverse-shared-fanin04",
+      "description": "Four reverse background flows per foreground source; 256 MiB per target.",
+      "default": true,
+      "background": {
+        "source_start": 256,
+        "source_count": 16,
+        "targets": [0, 1, 2, 3],
+        "bytes_per_flow": 67108864,
+        "priority": 7,
+        "start": "0ns"
+      }
+    },
+    {
+      "name": "reverse-shared-fanin08",
+      "description": "Eight reverse background flows per foreground source; the strongest observed baseline interference point.",
+      "default": true,
+      "background": {
+        "source_start": 256,
+        "source_count": 32,
+        "targets": [0, 1, 2, 3],
+        "bytes_per_flow": 33554432,
+        "priority": 7,
+        "start": "0ns"
+      }
+    },
+    {
+      "name": "reverse-shared",
+      "description": "Sixteen reverse background flows per foreground source; 256 MiB per target.",
+      "default": true,
+      "background": {
+        "source_start": 256,
+        "source_count": 64,
+        "targets": [0, 1, 2, 3],
+        "bytes_per_flow": 16777216,
+        "priority": 7,
+        "start": "0ns"
+      }
+    },
+    {
+      "name": "reverse-shared-fanin08-window1024",
+      "description": "Causal intervention: repeat 8-way sharing with a 1024-segment sender window.",
+      "default": true,
+      "inflight_max": 1024,
+      "background": {
+        "source_start": 256,
+        "source_count": 32,
+        "targets": [0, 1, 2, 3],
+        "bytes_per_flow": 33554432,
+        "priority": 7,
+        "start": "0ns"
+      }
+    },
+    {
+      "name": "reverse-shared-fanin08-fgprio1",
+      "description": "QoS intervention: foreground and inherited TAACK use VL1; background remains VL7.",
+      "default": true,
+      "foreground_priority": 1,
+      "background": {
+        "source_start": 256,
+        "source_count": 32,
+        "targets": [0, 1, 2, 3],
+        "bytes_per_flow": 33554432,
+        "priority": 7,
+        "start": "0ns"
+      }
+    },
+    {
+      "name": "reverse-shared-fanin08-bgprio6",
+      "description": "Optional negative control: VL6 background outranks VL7 TAACK in the current SP implementation.",
+      "default": false,
+      "background": {
+        "source_start": 256,
+        "source_count": 32,
+        "targets": [0, 1, 2, 3],
+        "bytes_per_flow": 33554432,
+        "priority": 6,
+        "start": "0ns"
+      }
+    }
+  ]
+}

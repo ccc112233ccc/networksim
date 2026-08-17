@@ -1,0 +1,5 @@
+The MIT license covers networksim-authored scripts and documentation.
+
+The patch under patches/ targets and contains context from GPL-2.0-licensed
+ns-3-UB source code. That patch and the separately fetched simulator remain
+subject to the upstream project's license terms.
