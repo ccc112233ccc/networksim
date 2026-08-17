@@ -23,6 +23,7 @@ REQUIRED = (
     "docs/EXPERIMENT_REPORT.md",
     "docs/figures/incast-start-spread.svg",
     "docs/figures/mice-elephant-interference.svg",
+    "docs/figures/reverse-taack-congestion.svg",
     "patches/0001-networksim-observability.patch",
     "scenarios/reverse-taack/scenario.json",
     "scenarios/same-destination-background/scenario.json",
@@ -132,7 +133,11 @@ def main() -> None:
         if not set(scenario_names[suite]).issubset(reference_names):
             fail(f"{reference_name} does not cover every {suite} case")
 
-    for figure in ("incast-start-spread.svg", "mice-elephant-interference.svg"):
+    for figure in (
+        "incast-start-spread.svg",
+        "mice-elephant-interference.svg",
+        "reverse-taack-congestion.svg",
+    ):
         ET.parse(ROOT / "docs" / "figures" / figure)
 
     print("repository verification passed")

@@ -72,7 +72,8 @@ def grouped_bars(x: float, y: float, width: float, height: float, labels: list[s
     return out
 
 
-def write_svg(path: Path, title: str, description: str, body: list[str], height: int) -> None:
+def write_svg(path: Path, title: str, description: str, body: list[str], height: int,
+              footer: str = "ns-3-UB 9e6368f · RNG run 1 · 400 Gbps · queue profile") -> None:
     svg = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 {height}" role="img">',
         f"<title>{html.escape(title)}</title>",
@@ -80,7 +81,7 @@ def write_svg(path: Path, title: str, description: str, body: list[str], height:
         f'<rect width="1000" height="{height}" fill="#f8fafc"/>',
         text(40, 40, title, size=24, anchor="start", weight="700"),
         *body,
-        text(40, height - 18, "ns-3-UB 9e6368f · RNG run 1 · 400 Gbps · queue profile", size=11, anchor="start"),
+        text(40, height - 18, footer, size=11, anchor="start"),
         "</svg>",
     ]
     path.write_text("\n".join(svg) + "\n", encoding="utf-8")
@@ -180,12 +181,62 @@ def plot_mice_elephant() -> None:
     )
 
 
+def plot_reverse_taack() -> None:
+    rows = read_rows("public-upstream-smoke.csv")
+    labels = ["baseline", "shared / 512", "shared / 1024", "shared / VL1"]
+    body = []
+    body += grouped_bars(
+        40,
+        65,
+        920,
+        300,
+        labels,
+        [
+            ("median TAACK", [float(row["taack_median_us_src0"]) for row in rows]),
+            ("P99 TAACK", [float(row["taack_p99_us_src0"]) for row in rows]),
+            ("max TAACK", [float(row["taack_max_us_src0"]) for row in rows]),
+        ],
+        350,
+        "TAACK return latency (us)",
+    )
+    body += grouped_bars(
+        40,
+        385,
+        445,
+        245,
+        labels,
+        [("foreground rate", [float(row["foreground_aggregate_gbps"]) for row in rows])],
+        420,
+        "Foreground payload rate (Gbps)",
+    )
+    body += grouped_bars(
+        515,
+        385,
+        445,
+        245,
+        labels,
+        [("max receive gap", [float(row["receiver_max_data_gap_us"]) for row in rows])],
+        65,
+        "Maximum forward receive gap (us)",
+    )
+    write_svg(
+        FIGURES / "reverse-taack-congestion.svg",
+        "Reverse-path TAACK congestion drains the forward sender window",
+        "TAACK return latency, foreground payload rate, and forward receive gap for baseline, shared reverse traffic, a doubled sender window, and VL isolation.",
+        body,
+        670,
+        "ns-3-UB 9e6368f · RNG run 1 · 400 Gbps · compact CTP trace",
+    )
+
+
 def main() -> None:
     FIGURES.mkdir(parents=True, exist_ok=True)
     plot_incast()
     plot_mice_elephant()
+    plot_reverse_taack()
     print(f"wrote {FIGURES / 'incast-start-spread.svg'}")
     print(f"wrote {FIGURES / 'mice-elephant-interference.svg'}")
+    print(f"wrote {FIGURES / 'reverse-taack-congestion.svg'}")
 
 
 if __name__ == "__main__":

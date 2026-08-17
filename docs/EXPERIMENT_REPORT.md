@@ -1,18 +1,20 @@
-# 新增流量模式仿真结果报告
+# 网络拥塞场景综合仿真结果报告
 
 ## 1. 摘要
 
-本轮在相同的 512-host、4×400 Gbps Clos 和公开版 ns-3-UB/CTP 固定提交 `9e6368f` 上新增了两类常见数据中心网络问题：
+本报告在相同的 512-host、4×400 Gbps Clos 和公开版 ns-3-UB/CTP 固定提交 `9e6368f` 上汇总三类常见数据中心网络问题：
 
 1. **同步 incast / 微突发：**64 个源同时向 node128:port0 写入 1 MiB，并用启动时间摊开模拟 admission/pacing；
-2. **mice–elephant 干扰：**32 条 256 KiB 延迟敏感短流与 8 条 16 MiB 长流竞争，分别验证路径隔离和 VL 优先级隔离。
+2. **mice–elephant 干扰：**32 条 256 KiB 延迟敏感短流与 8 条 16 MiB 长流竞争，分别验证路径隔离和 VL 优先级隔离；
+3. **反向 TAACK 拥塞：**反向 bulk data 阻塞 CTP TAACK，验证有限 sender window、正向链路空洞和优先级隔离之间的因果关系。
 
-共运行 8 个 case、完成 384 个前景任务和 24 个长流任务。所有任务均完成；重传与拥塞控制关闭。本报告观察到的恶化来自无损队列、调度共享和突发，而不是丢包恢复。
+共汇总 12 个 case、520 个已完成任务，其中包含 400 个被观测的前景/业务流和 120 个背景流。所有任务均完成；重传与拥塞控制关闭。本报告观察到的恶化来自无损队列、调度共享、反馈阻塞和同步突发，而不是丢包恢复。
 
-最重要的两个结果是：
+最重要的三个结果是：
 
 - 轻微错峰不足以消除微突发。启动摊开 500 us 时 P99 FCT 下降 31.96%，但峰值队列仍为 15.59 MiB；只有 1.5 ms 的 admission-style pacing 才把峰值队列降至 0.75 MiB、P99 降低 98.32%，代价是作业 makespan 增加 12.33%。
 - 长流只有共享同一个最终接收口和 VL 时才伤害短流。短流 P99 从 170.905 us 上升到 773.923 us，即 4.528×；把短流放入 VL1 后 P99 恢复到 171.064 us，但峰值队列反而增至 20.96 MiB。这说明 QoS 能保护业务尾延迟，却不会自动消除底层拥塞和缓冲压力。
+- 反向 bulk data 与 TAACK 共享最终回程口和 VL7 后，TAACK P99 从 0.706 us 猛增到 267.905 us、前景带宽下降 33.32%。窗口从 512 加到 1024 只能部分恢复，而 VL1 隔离把前景带宽恢复到 396.24 Gbps，说明根因是反馈路径调度拥塞，有限窗口是放大/传导环节。
 
 ## 2. 实验环境与口径
 
@@ -25,7 +27,7 @@
 | 流控/调度 | CBFC、SP |
 | CTP | inflight 512、OOO threshold 2048 |
 | 可靠性 | retransmission off、congestion control off |
-| 观测 | `queue` profile：Task、Port、Queue、CBFC；Packet trace off |
+| 观测 | incast/mice 使用 `queue` profile；TAACK 使用 compact + CTP filtered detail trace |
 | 随机种子 | RNG run 1 |
 
 FCT 均按每条任务自己的 `taskStartTime` 到 `taskCompletesTime` 计算。`job makespan` 从该 case 最早任务启动到最后任务完成。队列指标来自 node520:port0 的 `QueueTrace`；接收带宽来自 node128:port0 的 `throughput.csv`。
@@ -91,12 +93,52 @@ FCT 均按每条任务自己的 `taskStartTime` 到 `taskCompletesTime` 计算�
 
 VL1 隔离把短流 P99 恢复到基线的 1.001×，但峰值队列从共享 VL7 的 15.59 MiB 进一步增到 20.96 MiB，队列≥1 MiB 的时间仍约 2.85 ms。SP 调度优先服务短流，相当于把等待转移给 VL7 长流；它保护了短流 SLO，却没有降低总到达负载。
 
-## 5. 综合结论与优化建议
+## 5. 模式三：反向 TAACK 拥塞与 sender-window starvation
+
+### 5.1 场景设计
+
+前景为 node0..3 到 node128 的 4 条 32 MiB URMA_WRITE，100 us 启动。干扰 case 增加 32 条反向 bulk flow：node256..287 分别打到 node0..3，每个前景源最终回程口有 8 条背景流，背景总量保持 1 GiB。
+
+四个公开上游复验 case 为：无背景、共享回程口/VL7 且 inflight=512、同样拥塞但 inflight=1024、inflight 恢复 512 但前景及其 TAACK 使用 VL1。TAACK latency 定义为接收端完成 TA unit 到发送端处理对应 TAACK 的时间，每个 case 对 source0 取得 8192 个 TAACK 样本。
+
+![反向 TAACK 拥塞结果](figures/reverse-taack-congestion.svg)
+
+### 5.2 完整汇总
+
+| Case | Inflight | FG last ms | FG Gbps | Receiver Gbps | 最大正向空洞 us | TAACK P50 us | P99 us | Max us |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| no-bg | 512 | 2.709605 | 396.272 | 400.000 | 0.082640 | 0.705920 | 0.705920 | 0.706920 |
+| reverse-shared-fanin08 | 512 | 4.063631 | 264.232 | 282.110 | 58.287680 | 83.431800 | 267.905040 | 294.580480 |
+| reverse-shared-fanin08-window1024 | 1024 | 3.225528 | 332.889 | 373.670 | 49.781000 | 87.689280 | 279.321520 | 327.420520 |
+| reverse-shared-fanin08-fgprio1 | 512 | 2.709824 | 396.240 | 400.000 | 0.082640 | 0.848720 | 1.068240 | 1.154040 |
+
+### 5.3 因果解释
+
+```mermaid
+flowchart LR
+    A["反向 bulk data 汇聚到前景源端口"] --> B["与 TAACK 共享 VL7/出口服务"]
+    B --> C["TAACK P99 增至约 268 us"]
+    C --> D["512-segment sender window 释放变慢"]
+    D --> E["正向 admission 出现空洞"]
+    E --> F["node128 接收带宽降至 282.11 Gbps"]
+```
+
+三个对照共同定位了机制：
+
+1. **基线也会短暂达到 inflight 512，但不会欠吞吐。** 此时 TAACK P99 只有 0.706 us，窗口槽位能够快速循环，最大正向包间隔只有 0.08264 us。因此看到 `Inflight reach limit` 本身不等于存在性能问题，关键是窗口保持无法释放的时间。
+2. **共享回程口/VL 后才形成反馈饥饿。** TAACK P99 增至基线的 379.5×，最大正向空洞增至 58.29 us，前景带宽下降 33.32%，最晚完成时间增加 49.97%。接收链路明显欠利用，但所有任务仍完成，说明不是丢包恢复。
+3. **加窗口只缓解，不治根。** inflight=1024 时 TAACK P99 仍为 279.32 us，甚至略高于 512 case；前景带宽相对拥塞 case 提升 25.98%，但仍比基线低 15.99%。更大的窗口覆盖了更多 feedback BDP，却没有减少 TAACK 排队。
+4. **VL 隔离直接消除反馈调度竞争。** 恢复 inflight=512 后，只把前景/TAACK 放到 VL1，TAACK P99 降至 1.068 us、前景带宽恢复 396.24 Gbps、正向空洞恢复 0.08264 us。这证明共享服务等级才是根因，有限窗口是传导环节。
+
+工程上最好让 TAACK 使用独立控制 VL 或获得 WRR reserved share；当前用例将前景 data 和其继承的 TAACK 一起提升到 VL1，只是公开配置接口下的代理实验。单纯扩大 inflight 会增加在途数据和缓冲压力，不应作为唯一方案。
+
+## 6. 综合结论与优化建议
 
 | 问题 | 能看到的症状 | 本实验根因 | 有效措施 | 需要警惕 |
 |---|---|---|---|---|
 | 同步 incast | 队列约 16 MiB、FCT≈整个批次排空时间 | 同步到达速度远超 400 Gbps 最终出口 | receiver-driven admission、按 wire serialization 做 pacing、启动抖动 | 太强 pacing 会增加 makespan 并制造链路空洞 |
 | Mice–elephant HoL | 接收口仍满载，但 mice P99 变成 4.528× | 短流与长流共享最终口和同一 VL 调度 | 独立控制/延迟敏感 VL、WRR 保底、短流感知调度 | SP 可能把队列和延迟转移给低优先级长流 |
+| 反向 TAACK 拥塞 | TAACK P99≈268 us、正向空洞≈58 us、前景带宽下降 33% | 反馈与反向 bulk data 共享最终回程口/VL，有限 window 无法及时释放 | TAACK 控制 VL、WRR reserved share、按反馈 BDP 设置 inflight | 只扩大窗口会增加在途量且只能部分恢复 |
 
 建议的实现优先级：
 
@@ -105,11 +147,11 @@ VL1 隔离把短流 P99 恢复到基线的 1.001×，但峰值队列从共享 VL
 3. 同时监控业务 FCT 分位数、每 VL 队列时长和端口利用率。只看端口利用率会漏掉 mice–elephant 问题，只看 FCT 又无法区分欠利用与调度排队；
 4. 若使用 SP，需要增加低优先级饥饿上限；更稳妥的生产方案通常是带 reserved share 的 WRR/DRR。
 
-## 6. 可信度与边界
+## 7. 可信度与边界
 
-- 两个 suite 各包含 4 个严格控制变量的 case，且每个 case 中有 32 或 64 条前景样本；结论有 disjoint 和 QoS 反事实对照支撑。
+- 三类场景各包含 4 个严格控制变量的 case；incast/mice 每个 case 有 32 或 64 条前景流，TAACK 每个 case 有 8192 个 source0 反馈样本，并有 window/QoS 反事实对照。
 - 当前只运行 RNG run 1，足以证明机制能够稳定出现，但不能表示生产概率分布。后续应扫描 RNG、非均匀随机启动、流大小分布和更多目的节点。
 - 仿真属于包级协议/队列模型，不包含 doorbell/WQE、DMA、PCIe、NIC 片上缓存或 firmware 微架构争用。
 - CBFC 避免了丢包，但没有消除共享调度和缓冲排队；本实验不能据此声称真实硬件绝不会丢包。
 
-结构化数据位于 [`results/reference/synchronized-incast.csv`](../results/reference/synchronized-incast.csv) 和 [`results/reference/mice-elephant.csv`](../results/reference/mice-elephant.csv)，运行环境记录在 [`new-traffic-manifest.json`](../results/reference/new-traffic-manifest.json)。图表可用 `make plot` 重新生成。
+结构化数据位于 [`synchronized-incast.csv`](../results/reference/synchronized-incast.csv)、[`mice-elephant.csv`](../results/reference/mice-elephant.csv) 和 [`public-upstream-smoke.csv`](../results/reference/public-upstream-smoke.csv)，运行环境记录在 [`new-traffic-manifest.json`](../results/reference/new-traffic-manifest.json)。图表可用 `make plot` 重新生成。
