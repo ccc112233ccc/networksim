@@ -122,6 +122,17 @@ networksim/
 详细表格和解释见 [docs/RESULTS.md](docs/RESULTS.md)。
 同步 incast 和 mice–elephant 的完整报告见 [docs/EXPERIMENT_REPORT.md](docs/EXPERIMENT_REPORT.md)。
 
+## Benchmark 设计工作簿
+
+[outputs/networksim-benchmark-design/networksim-benchmark-design.xlsx](outputs/networksim-benchmark-design/networksim-benchmark-design.xlsx) 是可筛选的 Excel 版 benchmark 规范，包含：
+
+- A–F 六大类、17 个场景族和 154 个原子 Case；
+- 当前仓库 21 个可直接运行的 Case，以及尚需补配置、扩展生成器或仿真器能力的设计点；
+- 每个原子 Case 的唯一变量、固定参数、业务映射、生成/运行/分析命令、输出路径和验收指标；
+- CTP 反向 TAACK 专项扫描、参数字典、指标口径、从零运行手册和 Smoke/Core/Extended 推荐集合。
+
+工作簿中的绿色 Case 可以直接复制命令运行；黄色、橙色和红色 Case 是目标接口，必须先完成对应实现，不能当作当前已支持能力。
+
 ## 解释边界
 
 该实验属于包级网络与协议行为仿真，不是 RTL、周期精确或 NIC 微架构仿真。它能够表达拓扑、路由、包序列化、交换机 VOQ/仲裁、CBFC/PFC、CTP TAACK、发送窗口和端到端任务完成；不能自动代表真实硬件中的 doorbell/WQE 调度、PCIe/DMA、片上缓存争用、firmware 时序或 PHY 误码。
