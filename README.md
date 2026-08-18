@@ -126,13 +126,12 @@ networksim/
 
 [outputs/networksim-benchmark-design/networksim-benchmark-design.xlsx](outputs/networksim-benchmark-design/networksim-benchmark-design.xlsx) 是可筛选的 Excel 版 benchmark 规范，包含：
 
-- 4 组已实现实验和 21 个可直接搭建的 Case；
-- 每个 Case 明确的前景/背景流数量、源节点、目的节点、每流字节数、操作类型、优先级和启动时间；
-- 1,786 条逐流展开记录，筛选 Case 后可以直接复制为 `traffic.csv`；
-- 2,560 条完整物理链路，可以直接复制为 `topology.csv`；
-- 每个 Case 的完整 `network_attribute.txt`、端口级最短路规则、原始 ns-3-UB 运行步骤和结果验收口径。
+- 13 组通算网络 benchmark，其中 4 组与当前场景一致，9 组是建议新增的业务测试；
+- 60 个原子 Case 和 105 个流量组，每组明确源节点、目的映射、流数、每流字节数、操作类型、优先级、启动时间和阶段依赖；
+- 单流、独立 Pair、多打一、同步 incast、反向 TAACK、Mice–Elephant、分层/Ring AllReduce、MoE、Embedding、Parameter Server、Checkpoint 干扰和 Pipeline Parallel；
+- 每个 benchmark 与实际通算业务的对应关系、单变量扫描顺序、指标口径和仿真结论边界。
 
-工作簿按“只有原始 ns-3-UB、没有本仓库脚本”的使用方式编写。完整路由表有 1,144,832 行，超过 Excel 单工作表上限，因此工作簿给出精确端口公式和核对样例，而不是直接嵌入全部路由行。
+工作簿只定义实验，不代生成 `traffic.csv`、拓扑、路由、网络属性或 trace 文件。实现者按照 `Case流量组` 中的映射公式自行展开输入；“当前已实现”和“建议新增”在表中分开标注。
 
 ## 解释边界
 
