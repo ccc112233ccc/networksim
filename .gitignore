@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 .venv/
+.artifact-work/
 
 # The upstream simulator is fetched on demand and is not vendored.
 external/

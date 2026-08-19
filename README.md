@@ -122,6 +122,17 @@ networksim/
 详细表格和解释见 [docs/RESULTS.md](docs/RESULTS.md)。
 同步 incast 和 mice–elephant 的完整报告见 [docs/EXPERIMENT_REPORT.md](docs/EXPERIMENT_REPORT.md)。
 
+## Benchmark 设计工作簿
+
+[outputs/networksim-benchmark-design/networksim-benchmark-design.xlsx](outputs/networksim-benchmark-design/networksim-benchmark-design.xlsx) 是可筛选的 Excel 版 benchmark 规范，包含：
+
+- 13 组通算网络 benchmark，其中 4 组与当前场景一致，9 组是建议新增的业务测试；
+- 60 个原子 Case 和 105 个流量组，每组明确源节点、目的映射、流数、每流字节数、操作类型、优先级、启动时间和阶段依赖；
+- 单流、独立 Pair、多打一、同步 incast、反向 TAACK、Mice–Elephant、分层/Ring AllReduce、MoE、Embedding、Parameter Server、Checkpoint 干扰和 Pipeline Parallel；
+- 每个 benchmark 与实际通算业务的对应关系、单变量扫描顺序、指标口径和仿真结论边界。
+
+工作簿只定义实验，不代生成 `traffic.csv`、拓扑、路由、网络属性或 trace 文件。实现者按照 `Case流量组` 中的映射公式自行展开输入；“当前已实现”和“建议新增”在表中分开标注。
+
 ## 解释边界
 
 该实验属于包级网络与协议行为仿真，不是 RTL、周期精确或 NIC 微架构仿真。它能够表达拓扑、路由、包序列化、交换机 VOQ/仲裁、CBFC/PFC、CTP TAACK、发送窗口和端到端任务完成；不能自动代表真实硬件中的 doorbell/WQE 调度、PCIe/DMA、片上缓存争用、firmware 时序或 PHY 误码。
